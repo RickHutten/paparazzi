@@ -71,3 +71,46 @@ Flight
 ------
 
 1.  From the Paparazzi Center, select the flight session and ... do the same than in simulation !
+
+
+Setup
+-----
+
+Volg deze regels code een voor een op:
+
+
+```
+sudo add-apt-repository -y ppa:paparazzi-uav/ppa && sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa && sudo apt-get update && \ sudo apt-get -f -y install paparazzi-dev paparazzi-jsbsim gcc-arm-embedded && cd ~ && git clone --origin upstream https://github.com/paparazzi/paparazzi.git && \ cd ~/paparazzi && git remote update -p && \ git checkout -b v5.10 upstream/v5.10 && sudo cp conf/system/udev/rules/*.rules /etc/udev/rules.d/ && sudo udevadm control --reload-rules && \ make && ./paparazzi
+
+git remote add mavlabCourse https://github.com/RickHutten/paparazzi
+
+git fetch mavlabCourse mavlabCourse
+
+git checkout mavlabCourse
+
+git submodule sync
+
+git submodule init
+
+git submodule update
+
+make
+
+python start.py
+
+cd ./sw/tools/parrot/bebop
+
+gdebi ./parrot-tools-linuxgnutools-2012.03 1.0.0-1 i386.deb
+
+cd ../../../ext/libopengles/lib/arm
+
+make
+
+cd ./paparazzi/sw/ext/opencv_bebop
+
+git config --global user.email lalala@example.com
+
+git config --global user.name githubaccountname
+
+make
+```
