@@ -76,7 +76,7 @@ Flight
 Setup
 -----
 
-Volg deze regels code een voor een op:
+Execute these lines one by one:
 
 
 ```
