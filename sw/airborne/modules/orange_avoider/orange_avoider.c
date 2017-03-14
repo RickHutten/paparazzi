@@ -62,7 +62,11 @@ void orange_avoider_periodic()
   safeToGoForwards = color_count < tresholdColorCount;
 
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
-  PRINT("Color_count: %d  threshold: %d safe: %d move distance: %f \n", color_count, tresholdColorCount, safeToGoForwards, moveDistance);
+  //PRINT("Color_count: %d  threshold: %d safe: %d move distance: %f \n", color_count, tresholdColorCount, safeToGoForwards, moveDistance);
+
+  printf("PosX: %d  PosY: %d \n", stateGetPositionEnu_i()->x, stateGetPositionEnu_i()->y);
+
+
   if(safeToGoForwards){
       moveWaypointForward(WP_GOAL, moveDistance);
       moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
