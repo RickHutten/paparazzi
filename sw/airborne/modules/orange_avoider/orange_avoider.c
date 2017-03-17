@@ -59,6 +59,63 @@ void orange_avoider_periodic()
 {
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
+  boundaryd
+  safeToGo = MAX_POINT_VALUE > THRESHOLD;
+  float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
+  img_width = 52;
+  right_lim = img_width/2 + 3;
+  left_lim = img_width/2 - 2;
+  if(safeToGo){
+      if (MAX_POINT >= left_lim && MAX_POINT_LOC <= right_lim){
+    	  moveWaypointForward(WP_GOAL, moveDistance);
+    	  moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
+    	  nav_set_heading_towards_waypoint(WP_GOAL);
+    	  chooseRandomIncrementAvoidance();
+    	  trajectoryConfidence += 1;
+      }
+      else if(MAX_POINT_LOC < left_lim){
+    	  waypoint_set_here_2d(WP_GOAL);
+ 	      waypoint_set_here_2d(WP_TRAJECTORY);
+    	  increase_nav_heading(&nav_heading, incrementForAvoidance);
+    	  if(trajectoryConfidence > 5){
+    	            trajectoryConfidence -= 4;
+    	        }
+    	        else{
+    	            trajectoryConfidence = 1;
+    	        }
+      }
+      else if(MAX_POINT_LOC > right_lim){
+    	  waypoint_set_here_2d(WP_GOAL);
+    	  waypoint_set_here_2d(WP_TRAJECTORY);
+    	  increase_nav_heading(&nav_heading, -incrementForAvoidance);
+    	  if(trajectoryConfidence > 5){
+    	            trajectoryConfidence -= 4;
+    	        }
+    	        else{
+    	            trajectoryConfidence = 1;
+    	        }
+      }
+
+  }
+  else{
+      waypoint_set_here_2d(WP_GOAL);
+      waypoint_set_here_2d(WP_TRAJECTORY);
+      increase_nav_heading(&nav_heading, incrementForAvoidance);
+      if(trajectoryConfidence > 5){
+          trajectoryConfidence -= 4;
+      }
+      else{
+          trajectoryConfidence = 1;
+      }
+  }
+  return;
+}
+
+/*
+void orange_avoider_periodic()
+{
+  // Check the amount of orange. If this is above a threshold
+  // you want to turn a certain amount of degrees
   safeToGoForwards = color_count < tresholdColorCount;
   VERBOSE_PRINT("Color_count: %d  threshold: %d safe: %d \n", color_count, tresholdColorCount, safeToGoForwards);
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
@@ -83,6 +140,7 @@ void orange_avoider_periodic()
   return;
 }
 
+*/
 /*
  * Increases the NAV heading. Assumes heading is an INT32_ANGLE. It is bound in this function.
  */
