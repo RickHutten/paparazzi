@@ -57,6 +57,13 @@ void orange_avoider_init()
  */
 void orange_avoider_periodic()
 {
+	// Set crop of image
+	//  struct FloatEulers* my_euler_angles = stateGetNedToBodyEulers_f();
+	//  //my_euler_angles->theta;
+	//  mt9f002.offset_x = 0;
+	//  mt9f002_update_resolution(mt9f002);
+
+
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
   safeToGoForwards = color_count < tresholdColorCount;
@@ -64,7 +71,7 @@ void orange_avoider_periodic()
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
   //PRINT("Color_count: %d  threshold: %d safe: %d move distance: %f \n", color_count, tresholdColorCount, safeToGoForwards, moveDistance);
 
-  printf("PosX: %d  PosY: %d \n", stateGetPositionEnu_i()->x, stateGetPositionEnu_i()->y);
+  //printf("PosX: %d  PosY: %d \n", stateGetPositionEnu_i()->x, stateGetPositionEnu_i()->y);
 
 
   if(safeToGoForwards){

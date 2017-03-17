@@ -25,6 +25,7 @@
  */
 
 #include "image.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -155,35 +156,91 @@ uint16_t image_yuv422_colorfilt(struct image_t *input, struct image_t *output, u
 
   // Copy the creation timestamp (stays the same)
   output->ts = input->ts;
-
+  printf("ImageSize: (%d, %d)\n\n\n\n", output->w, output->h);
   // Go trough all the pixels
+
+//  struct FloatEulers* my_euler_angles = stateGetNedToBodyEulers_f();
+//  //my_euler_angles->theta;
+//  mt9f002.offset_x = 0;
+//  mt9f002_update_resolution(mt9f002);
+
   for (uint16_t y = 0; y < output->h; y++) {
     for (uint16_t x = 0; x < output->w; x += 2) {
       // Check if the color is inside the specified values
-      if (
-        (dest[1] >= y_m)
-        && (dest[1] <= y_M)
-        && (dest[0] >= u_m)
-        && (dest[0] <= u_M)
-        && (dest[2] >= v_m)
-        && (dest[2] <= v_M)
-      ) {
-        cnt ++;
-        // UYVY
-        dest[0] = 64;        // U
-        dest[1] = source[1];  // Y
-        dest[2] = 255;        // V
-        dest[3] = source[3];  // Y
-      } else {
-        // UYVY
-        char u = source[0] - 127;
-        u /= 4;
-        dest[0] = 127;        // U
-        dest[1] = source[1];  // Y
-        u = source[2] - 127;
-        u /= 4;
-        dest[2] = 127;        // V
-        dest[3] = source[3];  // Y
+
+    	if (       (dest[1] >= 20)
+    	        && (dest[1] <= 100)
+    	        && (dest[0] >= 60)
+    	        && (dest[0] <= 115)
+    	        && (dest[2] >= 120)
+    	        && (dest[2] <= 150)
+    	      ) {
+    		    	  dest[0] = 255;
+    		    	  dest[1] = 29;
+    		    	  dest[2] = 107;
+    		    	  dest[3] = source[3];
+    	}
+//      if (y == 100 && x == 20) {
+//    	  printf("ImageSize: (%d, %d)  Pixel: (20, 100)  Y: %d  U: %d  V: %d\n", output->w, output->h, dest[1], dest[0], dest[2]);
+//    	  // Make the pixel red
+//    	  dest[0] = 84;
+//    	  dest[1] = 76;
+//    	  dest[2] = 255;
+//    	  dest[3] = source[3];
+//      } else if (y == 400 && x == 20) {
+//    	  printf("ImageSize: (%d, %d)  Pixel: (20, 400)  Y: %d  U: %d  V: %d\n", output->w, output->h, dest[1], dest[0], dest[2]);
+//    	  // Make the pixel blue
+//    	  dest[0] = 255;
+//    	  dest[1] = 29;
+//    	  dest[2] = 107;
+//    	  dest[3] = source[3];
+//      } else if (y == 150 && x == 40) {
+//    	  printf("ImageSize: (%d, %d)  Pixel: (40, 150)  Y: %d  U: %d  V: %d\n", output->w, output->h, dest[1], dest[0], dest[2]);
+//    	  // Make the pixel red
+//    	  dest[0] = 84;
+//    	  dest[1] = 76;
+//    	  dest[2] = 255;
+//    	  dest[3] = source[3];
+//      } else if (y == 350 && x == 40) {
+//    	  printf("ImageSize: (%d, %d)  Pixel: (40, 350)  Y: %d  U: %d  V: %d\n", output->w, output->h, dest[1], dest[0], dest[2]);
+//    	  // Make the pixel blue
+//    	  dest[0] = 255;
+//    	  dest[1] = 29;
+//    	  dest[2] = 107;
+//    	  dest[3] = source[3];
+//      } else if (y == 200 && x == 60) {
+//    	  printf("ImageSize: (%d, %d)  Pixel: (60, 200)  Y: %d  U: %d  V: %d\n", output->w, output->h, dest[1], dest[0], dest[2]);
+//    	  // Make the pixel red
+//    	  dest[0] = 84;
+//    	  dest[1] = 76;
+//    	  dest[2] = 255;
+//    	  dest[3] = source[3];
+//      } else if (y == 300 && x == 60) {
+//    	  printf("ImageSize: (%d, %d)  Pixel: (60, 300)  Y: %d  U: %d  V: %d\n", output->w, output->h, dest[1], dest[0], dest[2]);
+//    	  // Make the pixel blue
+//    	  dest[0] = 255;
+//    	  dest[1] = 29;
+//    	  dest[2] = 107;
+//    	  dest[3] = source[3];
+//      } else if (
+//        (dest[1] >= y_m)
+//        && (dest[1] <= y_M)
+//        && (dest[0] >= u_m)
+//        && (dest[0] <= u_M)
+//        && (dest[2] >= v_m)
+//        && (dest[2] <= v_M)
+//      )
+      else {
+//        cnt ++;
+//        // UYVY
+//        dest[0] = 64;        // U
+//        dest[1] = source[1];  // Y
+//        dest[2] = 255;        // V
+//        dest[3] = source[3];  // Y
+    	  dest[0] = 127;
+    	  dest[1] = source[1];
+    	  dest[2] = 127;
+    	  dest[3] = source[3];
       }
 
       // Go to the next 2 pixels
