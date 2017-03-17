@@ -40,13 +40,6 @@ float maxDistance               = 2.25;
  */
 void orange_avoider_init()
 {
-  // Initialise the variables of the colorfilter to accept orange
-  color_lum_min = 20;
-  color_lum_max = 255;
-  color_cb_min  = 75;
-  color_cb_max  = 145;
-  color_cr_min  = 167;
-  color_cr_max  = 255;
   // Initialise random values
   srand(time(NULL));
   chooseRandomIncrementAvoidance();
@@ -66,6 +59,8 @@ void orange_avoider_periodic()
 
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
+	printf("Printing ");
+	printf("%d \n", boundary[10]);
   safeToGoForwards = color_count < tresholdColorCount;
 
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);

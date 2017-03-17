@@ -34,8 +34,7 @@ extern void colorfilter_init(void);
 
 struct image_t *colorfilter_func(struct image_t *img);
 
-uint16_t process_image(struct image_t *input, struct image_t *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
-                                uint8_t u_M, uint8_t v_m, uint8_t v_M);
+uint16_t process_image(struct image_t *input, struct image_t *output);
 
 int is_grass(int y, int u, int v);
 
@@ -49,6 +48,7 @@ extern uint8_t color_cr_min;
 extern uint8_t color_cr_max;
 
 extern int color_count;
+extern int boundary[];
 
 extern struct video_listener *listener;
 
