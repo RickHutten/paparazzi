@@ -65,22 +65,43 @@ void orange_avoider_periodic()
 
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
-	printf("Printing ");
-	printf("%d \n", boundary[10]);
-  safeToGoForwards = color_count < tresholdColorCount;
 
+  safeToGo = MAX_POINT_VALUE > THRESHOLD;
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
-  //PRINT("Color_count: %d  threshold: %d safe: %d move distance: %f \n", color_count, tresholdColorCount, safeToGoForwards, moveDistance);
+  img_width = 52;
+  right_lim = img_width/2 + 3;
+  left_lim = img_width/2 - 2;
+  if(safeToGo){
+      if (MAX_POINT >= left_lim && MAX_POINT_LOC <= right_lim){
+    	  moveWaypointForward(WP_GOAL, moveDistance);
+    	  moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
+    	  nav_set_heading_towards_waypoint(WP_GOAL);
+    	  chooseRandomIncrementAvoidance();
+    	  trajectoryConfidence += 1;
+      }
+      else if(MAX_POINT_LOC < left_lim){
+    	  waypoint_set_here_2d(WP_GOAL);
+ 	      waypoint_set_here_2d(WP_TRAJECTORY);
+    	  increase_nav_heading(&nav_heading, incrementForAvoidance);
+    	  if(trajectoryConfidence > 5){
+    	            trajectoryConfidence -= 4;
+    	        }
+    	        else{
+    	            trajectoryConfidence = 1;
+    	        }
+      }
+      else if(MAX_POINT_LOC > right_lim){
+    	  waypoint_set_here_2d(WP_GOAL);
+    	  waypoint_set_here_2d(WP_TRAJECTORY);
+    	  increase_nav_heading(&nav_heading, -incrementForAvoidance);
+    	  if(trajectoryConfidence > 5){
+    	            trajectoryConfidence -= 4;
+    	        }
+    	        else{
+    	            trajectoryConfidence = 1;
+    	        }
+      }
 
-  //printf("PosX: %d  PosY: %d \n", stateGetPositionEnu_i()->x, stateGetPositionEnu_i()->y);
-
-
-  if(safeToGoForwards){
-      moveWaypointForward(WP_GOAL, moveDistance);
-      moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
-      nav_set_heading_towards_waypoint(WP_GOAL);
-      chooseRandomIncrementAvoidance();
-      trajectoryConfidence += 1;
   }
   else{
       waypoint_set_here_2d(WP_GOAL);
