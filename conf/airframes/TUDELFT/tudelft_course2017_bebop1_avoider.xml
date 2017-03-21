@@ -5,7 +5,7 @@
 		<target name="ap" board="bebop" />
 		<!-- Front Camera parameters -->
 		<define name="H264_ROTATE" value="TRUE" />
-		<define name="MT9F002_INITIAL_OFFSET_X" value="416+1904-480" /> <!-- 480 / 960 / 1920 / 3840 (horion for theta = 0 -> 2704) -->
+		<define name="MT9F002_INITIAL_OFFSET_X" value="1440" /> <!-- 480 / 960 / 1920 / 3840 (horion for theta = 0 -> 2704) -->
 		<define name="MT9F002_INITIAL_OFFSET_Y" value="1680-1040" /> <!-- 420 / 840 / 1680 / 3360 -->
 		<define name="MT9F002_SENSOR_WIDTH" value="2*480" /> <!-- 480 / 960 / 1920 / 3840 -->
 		<define name="MT9F002_SENSOR_HEIGHT" value="2*1040" /> <!-- 420 / 840 / 1680 / 3360 -->

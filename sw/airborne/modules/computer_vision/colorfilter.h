@@ -49,6 +49,7 @@ extern uint8_t color_cr_max;
 
 extern int color_count;
 extern int boundary[];
+extern int boundary_smoothed[];
 
 extern struct video_listener *listener;
 

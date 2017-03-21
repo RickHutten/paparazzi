@@ -18,13 +18,20 @@
 extern uint8_t safeToGoForwards;
 extern float incrementForAvoidance;
 extern uint16_t trajectoryConfidence;
+
 extern void orange_avoider_init(void);
 extern void orange_avoider_periodic(void);
-extern void create_boundary_average();
+
+void setImageCrop(void);
+int getCanGoForwards(void);
+int getBoundaryMaxVal(void);
+int getBoundaryMaxPosX(int);
+void createSmoothedBoundary(void);
+void moveWaypointForwardAngle(uint8_t, float, int);
+
 extern uint8_t moveWaypointForward(uint8_t, float);
 extern uint8_t moveWaypoint(uint8_t, struct EnuCoor_i *);
 extern uint8_t increase_nav_heading(int32_t *, float);
 extern uint8_t chooseRandomIncrementAvoidance(void);
 
 #endif
-
