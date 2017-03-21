@@ -50,12 +50,6 @@ void orange_avoider_init()
  */
 void orange_avoider_periodic()
 {
-	// Create moving average of boundary[] array
-	create_boundary_average();
-
-	// Get maximum value and heading of boundary
-
-
 	// Set crop of image
 	//  struct FloatEulers* my_euler_angles = stateGetNedToBodyEulers_f();
 	//  //my_euler_angles->theta;
@@ -94,13 +88,6 @@ void orange_avoider_periodic()
       }
   }
   return;
-}
-
-void create_boundary_average() {
-	for (int i = 2; i < 50; i ++) {
-		boundary_average[i-2] = 0.2 * (boundary[i-2] + boundary[i-1] + boundary[i] + boundary[i+1] + boundary[i+2]);
-	}
-	return;
 }
 
 /*

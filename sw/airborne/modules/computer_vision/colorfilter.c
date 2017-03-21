@@ -46,6 +46,7 @@ int box_width = 10;
 int box_height = 12;
 int color_count = 0;
 int boundary[520 / 10];
+int boundary_average[(520 / 10) - 4];
 
 // Function
 struct image_t *colorfilter_func(struct image_t *img) {
