@@ -34,19 +34,21 @@ struct video_listener *listener = NULL;
 
 
 // Filter Settings
-uint8_t color_lum_min = 40;
+uint8_t color_lum_min = 50;
 uint8_t color_lum_max = 170;
 uint8_t color_cb_min  = 30;
 uint8_t color_cb_max  = 110;
 uint8_t color_cr_min  = 120;
-uint8_t color_cr_max  = 160;
+uint8_t color_cr_max  = 170;
 
 // Result
 int box_width = 10;
 int box_height = 12;
 int color_count = 0;
 int boundary[520 / 10];
-int boundary_smoothed[(520 / 10) - 4];
+//int boundary_smoothed[(520 / 10) - 4];
+int boundary_smoothed_2[(520 / 10) - 2];
+int threshold = 40;
 
 // Function
 struct image_t *colorfilter_func(struct image_t *img) {
@@ -86,23 +88,30 @@ uint16_t process_image(struct image_t *input, struct image_t *output) {
 	for (uint16_t x = 0; x < image_width; x++) {
 		for (uint16_t y = 0; y < image_height; y += 2) {
 			// Check if pixel is green
+			if (x == 270 && y == 120) {
+				// Mark the pixel blue
+//				printf("Color: (%d %d %d)   ", dest[1], dest[0], dest[2]);
+				dest[0] = 0;        // U
+				dest[1] = 29;  		  // Y
+				dest[2] = 255;		  // V
+
+			}
 			if (is_grass(dest[1], dest[0], dest[2])) {
 				// Mark the pixel blue
 				dest[0] = 255;        // U
 				dest[1] = 29;  		  // Y
 				dest[2] = 107;		  // V
-				dest[3] = source[3];  // Y
 
 				// Increment count in the corresponding box
 				boxes[(y / (box_height))][(x / (box_width))] += 1;
 			}
+
 			// Go to the next 2 pixels
 			cnt += 4;
 			dest += 4;
 			source += 4;
 		}
 	}
-
 	// Fraction of the box that needs to be grass
 	float fraction = 0.80;
 
@@ -128,10 +137,27 @@ uint16_t process_image(struct image_t *input, struct image_t *output) {
 	for (uint16_t x = 0; x < image_width; x++) {
 		for (uint16_t y = 0; y < image_height; y += 2) {
 			// If pixel is on a boundary, color it
-			if (y == boundary[x / box_width]) {
+//			if (y == boundary[x / box_width]) {
+//				dest[0] = 128;      // U
+//				dest[1] = 250;  	// Y
+//				dest[2] = 20;		// V
+//			}
+			if (x > 2 * box_width && x < image_width - 2 * box_width && y == boundary_smoothed_2[x / box_width - 1]) {
 				dest[0] = 128;      // U
 				dest[1] = 250;  	// Y
 				dest[2] = 20;		// V
+			}
+			if (x > 2 * box_width && x < image_width - 2 * box_width && y+1 == boundary_smoothed_2[x / box_width - 1]) {
+				dest[0] = 128;      // U
+				dest[1] = 250;  	// Y
+				dest[2] = 20;		// V
+			}
+
+			// Show the threshold
+			if (y == threshold || y + 1 == threshold) {
+				dest[0] = 20;      // U
+				dest[1] = 250;  	// Y
+				dest[2] = 200;		// V
 			}
 
 			// Go to the next 2 pixels
@@ -152,6 +178,10 @@ int is_grass(int y, int u, int v) {
 			if ((v > color_cr_min && v < color_cr_max)) {
 				return 1;
 			}
+		}
+	} else if (y > 30 && y < color_lum_min) {
+		if (u < 70 && v < 70 - u) {
+			return 1;
 		}
 	}
 	return 0;

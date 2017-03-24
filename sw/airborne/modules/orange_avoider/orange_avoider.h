@@ -22,12 +22,16 @@ extern uint16_t trajectoryConfidence;
 extern void orange_avoider_init(void);
 extern void orange_avoider_periodic(void);
 
-void setImageCrop(void);
-int getCanGoForwards(void);
+float getMoveDistance(void);
+void setThreshold(void);
+char getCanGoForwards(void);
 int getBoundaryMaxVal(void);
 int getBoundaryMaxPosX(int);
 void createSmoothedBoundary(void);
 void moveWaypointForwardAngle(uint8_t, float, int);
+float getHeading(void);
+float getPositionX(void);
+float getPositionY(void);
 
 extern uint8_t moveWaypointForward(uint8_t, float);
 extern uint8_t moveWaypoint(uint8_t, struct EnuCoor_i *);

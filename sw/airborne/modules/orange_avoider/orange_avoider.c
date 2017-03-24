@@ -16,6 +16,12 @@
 #include <stdlib.h>
 #include "firmwares/rotorcraft/navigation.h"
 
+#include "subsystems/datalink/datalink.h"
+#include "subsystems/electrical.h"
+#include "subsystems/radio_control.h"
+#include "subsystems/ahrs.h"
+
+
 #include "boards/bebop/mt9f002.h"
 #include "generated/flight_plan.h"
 #include "modules/computer_vision/colorfilter.h"
@@ -37,12 +43,14 @@ int tresholdColorCount          = 0.05 * 124800; // 520 x 240 = 124.800 total pi
 float incrementForAvoidance;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
+char prevCanGoForwards = 0;
 
 /*
  * Initialization function, initialize camera object
  */
 void orange_avoider_init()
 {
+	printf("Init");
 	// TODO: Initialize camera
 //	mt9f002_init(&camera);
 
@@ -56,14 +64,15 @@ void orange_avoider_init()
  * and then moves a waypoint forward or changes the heading
  */
 void orange_avoider_periodic() {
-	// Set crop of image based on the drones pitch
-	setImageCrop();
+
+	// Change the threshold depending of the
+	setThreshold();
 
 	// Create moving average of boundary[] array
 	createSmoothedBoundary();
 
 	// Calculate if we can move forwards
-	int canGoForwards = getCanGoForwards();
+	char canGoForwards = getCanGoForwards();
 
 	// Get maximum value of boundary
 	int max = getBoundaryMaxVal();
@@ -73,102 +82,135 @@ void orange_avoider_periodic() {
 
 	// If its safe to go forwards
 	if(canGoForwards){
-		int moveDistance = 1.5;
-		if (pos_x < 20 && boundary_smoothed[24] < 240) {
+		// Get the move distance
+		float moveDistance = getMoveDistance();
+
+		printf("Movedistance %f  24: %d", moveDistance, boundary_smoothed_2[24]);
+
+		if (pos_x < 20 && boundary_smoothed_2[24] < 230) {
 			// Highest boundary is slightly to the left, move forwards to the left
-			moveWaypointForwardAngle(WP_GOAL, moveDistance, -2);
-		} else if (pos_x > 29 && boundary_smoothed[24] < 240) {
+			moveWaypointForwardAngle(WP_GOAL, moveDistance, -5);
+			printf("GoLeft      ");
+		} else if (pos_x > 29 && boundary_smoothed_2[24] < 230) {
 			// Highest boundary is slightly to the right, move forwards to the right
-			moveWaypointForwardAngle(WP_GOAL, moveDistance, 2);
+			moveWaypointForwardAngle(WP_GOAL, moveDistance, 5);
+			printf("GoRight     ");
 		} else {
 			// Highest boundary is straight ahead, go straight
 			moveWaypointForwardAngle(WP_GOAL, moveDistance, 0);
+			printf("GoStraight  ");
 		}
 		// Set heading of the drone towards the waypoint
 		nav_set_heading_towards_waypoint(WP_GOAL);
 	} else {
-		// Not safe to go forwards, stop and turn to the right 10 degrees
-		waypoint_set_here_2d(WP_GOAL);
-		increase_nav_heading(&nav_heading, 10);
+		if (prevCanGoForwards) {
+			// First time we can't go forwards
+			waypoint_set_here_2d(WP_GOAL);
+			chooseRandomIncrementAvoidance();
+		}
+		// Turn to the right 10 degrees
+		increase_nav_heading(&nav_heading, incrementForAvoidance);
 	}
+	prevCanGoForwards = canGoForwards;
 
-	printf("Max val: %d    Pos: %d    CanGoForwards: %d\n", max, pos_x, canGoForwards);
 
-//  safeToGo = MAX_POINT_VALUE > THRESHOLD;
-//  float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
-//  img_width = 52;
-//  right_lim = img_width/2 + 3;
-//  left_lim = img_width/2 - 2;
-//  if(safeToGo){
-//      if (MAX_POINT >= left_lim && MAX_POINT_LOC <= right_lim){
-//    	  moveWaypointForward(WP_GOAL, moveDistance);
-//    	  moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
-//    	  nav_set_heading_towards_waypoint(WP_GOAL);
-//    	  chooseRandomIncrementAvoidance();
-//    	  trajectoryConfidence += 1;
-//      }
-//      else if(MAX_POINT_LOC < left_lim){
-//    	  waypoint_set_here_2d(WP_GOAL);
-// 	      waypoint_set_here_2d(WP_TRAJECTORY);
-//    	  increase_nav_heading(&nav_heading, incrementForAvoidance);
-//    	  if(trajectoryConfidence > 5){
-//    	            trajectoryConfidence -= 4;
-//    	        }
-//    	        else{
-//    	            trajectoryConfidence = 1;
-//    	        }
-//      }
-//      else if(MAX_POINT_LOC > right_lim){
-//    	  waypoint_set_here_2d(WP_GOAL);
-//    	  waypoint_set_here_2d(WP_TRAJECTORY);
-//    	  increase_nav_heading(&nav_heading, -incrementForAvoidance);
-//    	  if(trajectoryConfidence > 5){
-//    	            trajectoryConfidence -= 4;
-//    	        }
-//    	        else{
-//    	            trajectoryConfidence = 1;
-//    	        }
-//      }
-//
-//  }
-//  else{
-//      waypoint_set_here_2d(WP_GOAL);
-//      waypoint_set_here_2d(WP_TRAJECTORY);
-//      increase_nav_heading(&nav_heading, incrementForAvoidance);
-//      if(trajectoryConfidence > 5){
-//          trajectoryConfidence -= 4;
-//      }
-//      else{
-//          trajectoryConfidence = 1;
-//      }
-//  }
+	printf("Position: (%f, %f)   Heading: %f\n", getPositionX(), getPositionY(), getHeading());
+
 	return;
+}
+
+float getMoveDistance() {
+
+	float moveDistance =  2.0 - 1.8 * (1.0 - boundary_smoothed_2[24]/240.);
+
+	// Reduce moveDisntance if were close to the optitrack boundary
+	float heading = getHeading();
+	if (getPositionX() < 20 && (heading < - 1.57 || heading > 1.57)) {
+		moveDistance /= 2.0;
+	}
+	if (getPositionX() > 80 && (heading > - 1.57 && heading < 1.57)) {
+		moveDistance /= 2.0;
+	}
+	if (getPositionY() < 30 && heading > 0) {
+		moveDistance /= 2.0;
+	}
+	if (getPositionY() > 80 && heading < 0){
+		moveDistance /= 2.0;
+	}
+	return moveDistance;
+}
+
+float getHeading() {
+	struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
+	float angle = ANGLE_FLOAT_OF_BFP(eulerAngles->psi) - 1.02;
+	if (angle < -3.1415) {
+		angle += 6.2830;
+	}
+	return angle;
+}
+
+float getPositionX() {
+	int x = stateGetPositionEnu_i()->x;
+	int y = stateGetPositionEnu_i()->y;
+	float posx = cosf(-0.55)*x - sinf(-0.55)*y;
+	posx += 435;
+	posx /= 18.54;
+	return posx;
+}
+
+float getPositionY() {
+	int32_t x = stateGetPositionEnu_i()->x;
+	int32_t y = stateGetPositionEnu_i()->y;
+	float posy = cosf(-0.55)*y + sinf(-0.55)*x;
+	posy += 613;
+	posy /= 14.15;
+	return posy;
 }
 
 /*
  * Sets the crop of the image depending on the theta angle of the drone,
  * so the done sees the same area no matter the pitch.
  */
-void setImageCrop() {
+void setThreshold() {
 	// Set crop of image
 	struct FloatEulers* my_euler_angles = stateGetNedToBodyEulers_f();
 	float theta = my_euler_angles->theta;
-	printf("Theta: %f   ", theta);
-	// TODO: Calculate the offset at specific angles theta
-	(&camera)->offset_x = 0;
-	mt9f002_update_resolution(&camera);
+//	printf("Theta: %f   ", theta);
+	threshold = 40 - theta * 300;
 }
 
 /*
  * Calculates whether there is something directly in front of the drone
  */
-int getCanGoForwards() {
-	int threshold = 40;  // Center boundary should all be higher than this
+char getCanGoForwards() {
+    // Center boundary should all be higher than this
 	for (int i = 16; i < 33; i ++) {
-		if (boundary_smoothed[i] <= threshold) {
+		if (boundary_smoothed_2[i] <= threshold) {
+			printf("getCanGoForwards: color");
 			return 0;
 		}
 	}
+
+	// Check if were close to the optitrack boundary
+	float heading = getHeading();
+	if (getPositionX() < 10 && (heading < - 1.57 || heading > 1.57)) {
+		printf("getCanGoForwards: x 10 heading: %f\n", heading);
+		return 0;
+	}
+	if (getPositionX() > 90 && (heading > - 1.57 && heading < 1.57)) {
+		printf("getCanGoForwards: x 90 heading: %f\n", heading);
+		return 0;
+	}
+	if (getPositionY() < 20 && heading > 0) {
+		printf("getCanGoForwards: y 10 heading: %f\n", heading);
+		return 0;
+	}
+	if (getPositionY() > 90 && heading < 0){
+		printf("getCanGoForwards: y 90 heading: %f\n", heading);
+		return 0;
+	}
+
+	// Otherwise you can go forwards
 	return 1;
 }
 
@@ -178,8 +220,8 @@ int getCanGoForwards() {
 int getBoundaryMaxVal() {
 	int max = 0;
 	for (int i = 0; i < 48; i ++) {
-		if (boundary_smoothed[i] > max) {
-			max = boundary_smoothed[i];
+		if (boundary_smoothed_2[i] > max) {
+			max = boundary_smoothed_2[i];
 		}
 	}
 	return max;
@@ -190,7 +232,7 @@ int getBoundaryMaxVal() {
  */
 int getBoundaryMaxPosX(int max) {
 	for (int i = 0; i < 48; i ++) {
-		if (boundary_smoothed[i] == max) {
+		if (boundary_smoothed_2[i] == max) {
 			return i;
 		}
 	}
@@ -202,7 +244,8 @@ int getBoundaryMaxPosX(int max) {
  */
 void createSmoothedBoundary() {
 	for (int i = 2; i < 50; i ++) {
-		boundary_smoothed[i-2] = 0.2 * (boundary[i-2] + boundary[i-1] + boundary[i] + boundary[i+1] + boundary[i+2]);
+//		boundary_smoothed[i-2] = 0.2 * (boundary[i-2] + boundary[i-1] + boundary[i] + boundary[i+1] + boundary[i+2]);
+		boundary_smoothed_2[i-1] = 0.333 * (boundary[i-1] + boundary[i] + boundary[i+1]);
 	}
 	return;
 }
