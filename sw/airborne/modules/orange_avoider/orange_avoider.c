@@ -40,7 +40,7 @@
 struct mt9f002_t camera;
 uint8_t safeToGoForwards        = false;
 int tresholdColorCount          = 0.05 * 124800; // 520 x 240 = 124.800 total pixels
-float incrementForAvoidance;
+float incrementForAvoidance		= 10;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
 char prevCanGoForwards = 0;
@@ -65,10 +65,10 @@ void orange_avoider_init()
  */
 void orange_avoider_periodic() {
 
-	// Change the threshold depending of the
+	// Change the threshold depending on the pitch of the drone
 	setThreshold();
 
-	// Create moving average of boundary[] array
+	// Create moving average of the boundary[] array
 	createSmoothedBoundary();
 
 	// Calculate if we can move forwards
@@ -85,7 +85,7 @@ void orange_avoider_periodic() {
 		// Get the move distance
 		float moveDistance = getMoveDistance();
 
-		printf("Movedistance %f  24: %d", moveDistance, boundary_smoothed_2[24]);
+		printf("Move: %f ", moveDistance);
 
 		if (pos_x < 20 && boundary_smoothed_2[24] < 230) {
 			// Highest boundary is slightly to the left, move forwards to the left
@@ -104,35 +104,40 @@ void orange_avoider_periodic() {
 		nav_set_heading_towards_waypoint(WP_GOAL);
 	} else {
 		if (prevCanGoForwards) {
-			// First time we can't go forwards
+			// First time we can't go forwards, set the waypoint once
 			waypoint_set_here_2d(WP_GOAL);
-			chooseRandomIncrementAvoidance();
 		}
-		// Turn to the right 10 degrees
+		// Turn to the right
+		printf("Move: stop  Avoidance: %f  ", incrementForAvoidance);
 		increase_nav_heading(&nav_heading, incrementForAvoidance);
 	}
 	prevCanGoForwards = canGoForwards;
 
-
-	printf("Position: (%f, %f)   Heading: %f\n", getPositionX(), getPositionY(), getHeading());
+	printf("Pos: (%f, %f) Heading: %f\n", getPositionX(), getPositionY(), getHeading());
 
 	return;
 }
 
 float getMoveDistance() {
-
+	// Get the moveDistance (speed) according to the camera
 	float moveDistance =  2.0 - 1.8 * (1.0 - boundary_smoothed_2[24]/240.);
 
-	// Reduce moveDisntance if were close to the optitrack boundary
+	// Get the heading of the drone
 	float heading = getHeading();
+
+	// If the drone is close to the optitrack boundary and the heading is
+	// pointing to the outside, reduce the speed of the drone
 	if (getPositionX() < 20 && (heading < - 1.57 || heading > 1.57)) {
 		moveDistance /= 2.0;
+		return moveDistance;
 	}
 	if (getPositionX() > 80 && (heading > - 1.57 && heading < 1.57)) {
 		moveDistance /= 2.0;
+		return moveDistance;
 	}
 	if (getPositionY() < 30 && heading > 0) {
 		moveDistance /= 2.0;
+		return moveDistance;
 	}
 	if (getPositionY() > 80 && heading < 0){
 		moveDistance /= 2.0;
@@ -140,42 +145,51 @@ float getMoveDistance() {
 	return moveDistance;
 }
 
+/*
+ * Get the heading of the drone in radians from -pi to pi
+ * Heading is zero in positive x direction (simplified coordinate system)
+ */
 float getHeading() {
 	struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
-	float angle = ANGLE_FLOAT_OF_BFP(eulerAngles->psi) - 1.02;
-	if (angle < -3.1415) {
+	float angle = ANGLE_FLOAT_OF_BFP(eulerAngles->psi) - 1.02;  // 1.57 - 0.55 = 1.02 offset
+	if (angle < -3.1415) {  // Make sure the the range is from -pi to pi
 		angle += 6.2830;
 	}
 	return angle;
 }
 
+/*
+ * Get the x position of the drone in a simplified coordinate system
+ */
 float getPositionX() {
 	int x = stateGetPositionEnu_i()->x;
 	int y = stateGetPositionEnu_i()->y;
-	float posx = cosf(-0.55)*x - sinf(-0.55)*y;
-	posx += 435;
-	posx /= 18.54;
+	float posx = cosf(-0.55)*x - sinf(-0.55)*y;  // Rotate coordinate system
+	posx += 435;  // Translate coordinate system
+	posx /= 18.54;  // Scale coordinate system
 	return posx;
 }
 
+/*
+ * Get the y position of the drone in a simplified coordinate system
+ */
 float getPositionY() {
-	int32_t x = stateGetPositionEnu_i()->x;
-	int32_t y = stateGetPositionEnu_i()->y;
-	float posy = cosf(-0.55)*y + sinf(-0.55)*x;
-	posy += 613;
-	posy /= 14.15;
+	int x = stateGetPositionEnu_i()->x;
+	int y = stateGetPositionEnu_i()->y;
+	float posy = cosf(-0.55)*y + sinf(-0.55)*x;  // Rotate coordinate system
+	posy += 613;  // Translate coordinate system
+	posy /= 14.15;  // Scale coordinate system
 	return posy;
 }
 
 /*
- * Sets the crop of the image depending on the theta angle of the drone,
- * so the done sees the same area no matter the pitch.
+ * Sets the threshold depending on the theta angle of the drone,
+ * so it is independent of the pitch
  */
 void setThreshold() {
 	// Set crop of image
 	struct FloatEulers* my_euler_angles = stateGetNedToBodyEulers_f();
 	float theta = my_euler_angles->theta;
-//	printf("Theta: %f   ", theta);
 	threshold = 40 - theta * 300;
 }
 
@@ -186,31 +200,74 @@ char getCanGoForwards() {
     // Center boundary should all be higher than this
 	for (int i = 16; i < 33; i ++) {
 		if (boundary_smoothed_2[i] <= threshold) {
-			printf("getCanGoForwards: color");
+			printf("F: color  ");
+			// Set random turn direction (-10 or +10)
+			chooseRandomIncrementAvoidance();
 			return 0;
 		}
 	}
 
 	// Check if were close to the optitrack boundary
 	float heading = getHeading();
-	if (getPositionX() < 10 && (heading < - 1.57 || heading > 1.57)) {
-		printf("getCanGoForwards: x 10 heading: %f\n", heading);
-		return 0;
-	}
-	if (getPositionX() > 90 && (heading > - 1.57 && heading < 1.57)) {
-		printf("getCanGoForwards: x 90 heading: %f\n", heading);
-		return 0;
-	}
+
+	// Drone is below y = 20  (danger zone)
 	if (getPositionY() < 20 && heading > 0) {
-		printf("getCanGoForwards: y 10 heading: %f\n", heading);
+		printf("F: y 20   ");
+		// Choose best avoidance direction
+		if (heading < 0.79) {
+			incrementForAvoidance = -15;
+		} else if (heading > 2.36) {
+			incrementForAvoidance = 15;
+		} else {
+			chooseRandomIncrementAvoidance();
+		}
 		return 0;
 	}
+
+	// Drone is above y = 90  (danger zone)
 	if (getPositionY() > 90 && heading < 0){
-		printf("getCanGoForwards: y 90 heading: %f\n", heading);
+		printf("F: y 90   ");
+		// Choose best avoidance direction
+		if (heading > -0.79) {
+			incrementForAvoidance = 15;
+		} else if (heading < -2.36) {
+			incrementForAvoidance = -15;
+		} else {
+			chooseRandomIncrementAvoidance();
+		}
+		return 0;
+	}
+
+	// Drone is below x = 10 (danger zone)
+	if (getPositionX() < 10 && (heading < - 1.57 || heading > 1.57)) {
+		printf("F: x 10   ");
+		// Choose best avoidance direction
+		if (heading < -2.36) {
+			incrementForAvoidance = 15;
+		} else if (heading > 2.36) {
+			incrementForAvoidance = -15;
+		} else {
+			chooseRandomIncrementAvoidance();
+		}
+		return 0;
+	}
+
+	// Drone is above x = 90 (danger zone)
+	if (getPositionX() > 90 && (heading > - 1.57 && heading < 1.57)) {
+		printf("F: x 90   ");
+		// Choose best avoidance direction
+		if (heading < -0.79) {
+			incrementForAvoidance = -15;
+		} else if (heading > 0.79) {
+			incrementForAvoidance = 15;
+		} else {
+			chooseRandomIncrementAvoidance();
+		}
 		return 0;
 	}
 
 	// Otherwise you can go forwards
+	printf("F: yes    ");
 	return 1;
 }
 
@@ -245,7 +302,7 @@ int getBoundaryMaxPosX(int max) {
 void createSmoothedBoundary() {
 	for (int i = 2; i < 50; i ++) {
 //		boundary_smoothed[i-2] = 0.2 * (boundary[i-2] + boundary[i-1] + boundary[i] + boundary[i+1] + boundary[i+2]);
-		boundary_smoothed_2[i-1] = 0.333 * (boundary[i-1] + boundary[i] + boundary[i+1]);
+		boundary_smoothed_2[i-1] = (boundary[i-1] + boundary[i] + boundary[i+1]) / 3;
 	}
 	return;
 }
@@ -253,80 +310,74 @@ void createSmoothedBoundary() {
 /*
  * Increases the NAV heading. Assumes heading is an INT32_ANGLE. It is bound in this function.
  */
-uint8_t increase_nav_heading(int32_t *heading, float incrementDegrees)
-{
-  struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
-  int32_t newHeading = eulerAngles->psi + ANGLE_BFP_OF_REAL( incrementDegrees / 180.0 * M_PI);
-  // Check if your turn made it go out of bounds...
-  INT32_ANGLE_NORMALIZE(newHeading); // HEADING HAS INT32_ANGLE_FRAC....
-  *heading = newHeading;
-//  VERBOSE_PRINT("Increasing heading to %f\n", ANGLE_FLOAT_OF_BFP(*heading) * 180 / M_PI);
-  return false;
+uint8_t increase_nav_heading(int32_t *heading, float incrementDegrees) {
+	struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
+	int32_t newHeading = eulerAngles->psi + ANGLE_BFP_OF_REAL( incrementDegrees / 180.0 * M_PI);
+	// Check if your turn made it go out of bounds...
+	INT32_ANGLE_NORMALIZE(newHeading); // HEADING HAS INT32_ANGLE_FRAC....
+	*heading = newHeading;
+	return false;
 }
 
 /*
  * Calculates coordinates of a distance of 'distanceMeters' forward w.r.t. current position and heading
  */
-uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters, int angle)
-{
-  struct EnuCoor_i *pos             = stateGetPositionEnu_i(); // Get your current position
-  struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
-  // Calculate the sine and cosine of the heading the drone is keeping
-  float sin_heading                 = sinf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi) + (3.141592*angle)/180.0);
-  float cos_heading                 = cosf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi) + (3.141592*angle)/180.0);
-  // Now determine where to place the waypoint you want to go to
-  new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
-  new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
-//  VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y), ANGLE_FLOAT_OF_BFP(eulerAngles->psi)*180/M_PI);
-  return false;
+uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters, int angle) {
+	struct EnuCoor_i *pos             = stateGetPositionEnu_i(); // Get your current position
+	struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
+	// Calculate the sine and cosine of the heading the drone is keeping
+	float sin_heading                 = sinf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi) + (3.141593*angle)/180.0);
+	float cos_heading                 = cosf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi) + (3.141593*angle)/180.0);
+	// Now determine where to place the waypoint you want to go to
+	new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
+	new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
+	return false;
 }
 
 /*
  * Sets waypoint 'waypoint' to the coordinates of 'new_coor'
  */
-uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
-{
-//  VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y));
-  waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
-  return false;
+uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor) {
+	waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
+	return false;
 }
 
 /*
  * Calculates coordinates of distance forward and sets waypoint 'waypoint' to those coordinates
  */
-uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
-{
-  struct EnuCoor_i new_coor;
-  calculateForwards(&new_coor, distanceMeters, 0);
-  moveWaypoint(waypoint, &new_coor);
-  return false;
+uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters) {
+	struct EnuCoor_i new_coor;
+	calculateForwards(&new_coor, distanceMeters, 0);
+	moveWaypoint(waypoint, &new_coor);
+	return false;
 }
 
 /*
  * Moves waypoint at distanceMeters ahead of the drone with a specific angle
  */
-void moveWaypointForwardAngle(uint8_t waypoint, float distanceMeters, int angle)
-{
-  struct EnuCoor_i new_coor;
-  calculateForwards(&new_coor, distanceMeters, angle);
-  moveWaypoint(waypoint, &new_coor);
-  return;
+void moveWaypointForwardAngle(uint8_t waypoint, float distanceMeters, int angle) {
+	struct EnuCoor_i new_coor;
+	calculateForwards(&new_coor, distanceMeters, angle);
+	moveWaypoint(waypoint, &new_coor);
+	return;
 }
 
 /*
  * Sets the variable 'incrementForAvoidance' randomly positive/negative
  */
-uint8_t chooseRandomIncrementAvoidance()
-{
-  // Randomly choose CW or CCW avoiding direction
-  int r = rand() % 2;
-  if (r == 0) {
-    incrementForAvoidance = 10.0;
-//    VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
-  } else {
-    incrementForAvoidance = -10.0;
-//    VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
-  }
-  return false;
+uint8_t chooseRandomIncrementAvoidance() {
+	// Only set the first time the drone can not go forwards
+	if (!prevCanGoForwards) {
+		// If this is not the first time, don't change incrementForAvoidance
+		return false;
+	}
+	// Randomly choose CW or CCW avoiding direction
+	int r = rand() % 2;
+	if (r == 0) {
+		incrementForAvoidance = 10.0;
+	} else {
+		incrementForAvoidance = -10.0;
+	}
+	return false;
 }
 

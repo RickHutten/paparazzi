@@ -33,6 +33,7 @@ float getHeading(void);
 float getPositionX(void);
 float getPositionY(void);
 
+uint8_t calculateForwards(struct EnuCoor_i *, float, int);
 extern uint8_t moveWaypointForward(uint8_t, float);
 extern uint8_t moveWaypoint(uint8_t, struct EnuCoor_i *);
 extern uint8_t increase_nav_heading(int32_t *, float);
