@@ -18,7 +18,7 @@
 
 #include "subsystems/datalink/datalink.h"
 #include "subsystems/electrical.h"
-#include "subsystems/radio_control.h"
+#include "subsystems/radio_contrraol.h"
 #include "subsystems/ahrs.h"
 
 
@@ -43,20 +43,16 @@ int tresholdColorCount          = 0.05 * 124800; // 520 x 240 = 124.800 total pi
 float incrementForAvoidance		= 10;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
-char prevCanGoForwards = 0;
+char prevCanGoForwards = 1;
 
 /*
  * Initialization function, initialize camera object
  */
-void orange_avoider_init()
-{
+void orange_avoider_init() {
 	printf("Init");
-	// TODO: Initialize camera
-//	mt9f002_init(&camera);
 
 	// Initialize random values
 	srand(time(NULL));
-	chooseRandomIncrementAvoidance();
 }
 
 /*
@@ -111,16 +107,16 @@ void orange_avoider_periodic() {
 		printf("Move: stop  Avoidance: %f  ", incrementForAvoidance);
 		increase_nav_heading(&nav_heading, incrementForAvoidance);
 	}
+	// Save the previous value of can go forwards
 	prevCanGoForwards = canGoForwards;
 
 	printf("Pos: (%f, %f) Heading: %f\n", getPositionX(), getPositionY(), getHeading());
-
 	return;
 }
 
 float getMoveDistance() {
 	// Get the moveDistance (speed) according to the camera
-	float moveDistance =  2.0 - 1.8 * (1.0 - boundary_smoothed_2[24]/240.);
+	float moveDistance =  2.0 - 1.8 * (1.0 - getBoundaryMinVal()/240.);
 
 	// Get the heading of the drone
 	float heading = getHeading();
@@ -129,15 +125,15 @@ float getMoveDistance() {
 	// pointing to the outside, reduce the speed of the drone
 	if (getPositionX() < 20 && (heading < - 1.57 || heading > 1.57)) {
 		moveDistance /= 2.0;
-		return moveDistance;
+		return moveDistance;  // Slightly quicker to return here
 	}
 	if (getPositionX() > 80 && (heading > - 1.57 && heading < 1.57)) {
 		moveDistance /= 2.0;
-		return moveDistance;
+		return moveDistance;  // Slightly quicker to return here
 	}
-	if (getPositionY() < 30 && heading > 0) {
+	if (getPositionY() < 20 && heading > 0) {
 		moveDistance /= 2.0;
-		return moveDistance;
+		return moveDistance;  // Slightly quicker to return here
 	}
 	if (getPositionY() > 80 && heading < 0){
 		moveDistance /= 2.0;
@@ -198,7 +194,7 @@ void setThreshold() {
  */
 char getCanGoForwards() {
     // Center boundary should all be higher than this
-	for (int i = 16; i < 33; i ++) {
+	for (int i = 12; i < 37; i ++) {
 		if (boundary_smoothed_2[i] <= threshold) {
 			printf("F: color  ");
 			// Set random turn direction (-10 or +10)
@@ -210,8 +206,8 @@ char getCanGoForwards() {
 	// Check if were close to the optitrack boundary
 	float heading = getHeading();
 
-	// Drone is below y = 20  (danger zone)
-	if (getPositionY() < 20 && heading > 0) {
+	// Drone is below y = 10  (danger zone)
+	if (getPositionY() < 10 && heading > 0) {
 		printf("F: y 20   ");
 		// Choose best avoidance direction
 		if (heading < 0.79) {
@@ -282,6 +278,19 @@ int getBoundaryMaxVal() {
 		}
 	}
 	return max;
+}
+
+/*
+ * Get the minimum value of the boundary in the center region
+ */
+int getBoundaryMinVal() {
+	int min = 240;
+	for (int i = 16; i < 33; i ++) {
+		if (boundary_smoothed_2[i] < min) {
+			min = boundary_smoothed_2[i];
+		}
+	}
+	return min;
 }
 
 /*

@@ -5,7 +5,7 @@
 		<target name="ap" board="bebop" />
 		<!-- Front Camera parameters -->
 		<define name="H264_ROTATE" value="TRUE" />
-		<define name="MT9F002_INITIAL_OFFSET_X" value="1440" /> <!-- 480 / 960 / 1920 / 3840 (horion for theta = 0 -> 2704) -->
+		<define name="MT9F002_INITIAL_OFFSET_X" value="1480" /> <!-- 480 / 960 / 1920 / 3840 (horion for theta = 0 -> 2704) -->
 		<define name="MT9F002_INITIAL_OFFSET_Y" value="1680-1040" /> <!-- 420 / 840 / 1680 / 3360 -->
 		<define name="MT9F002_SENSOR_WIDTH" value="2*480" /> <!-- 480 / 960 / 1920 / 3840 -->
 		<define name="MT9F002_SENSOR_HEIGHT" value="2*1040" /> <!-- 420 / 840 / 1680 / 3360 -->
@@ -44,7 +44,7 @@
 		<module name="send_imu_mag_current" />
 		<module name="logger_file">
 			<define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000" />
-		</module>
+		</module>telnet
 		<!-- Video/Camera modules -->
 		<module name="video_thread" />
 		<module name="cv_ae_awb">
@@ -227,7 +227,7 @@
 		<define name="MILLIAMP_AT_FULL_THROTTLE" value="8700" />
 		<define name="CATASTROPHIC_BAT_LEVEL" value="9.9" unit="V" />
 		<define name="CRITIC_BAT_LEVEL" value="10.8" unit="V" />
-		<define name="LOW_BAT_LEVEL" value="11.1" unit="V" />
+		<define name="LOW_BAT_LEVEL" value="10.8" unit="V" />
 		<define name="MAX_BAT_LEVEL" value="12.4" unit="V" />
 	</section>
 </airframe>

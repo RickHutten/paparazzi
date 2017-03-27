@@ -26,6 +26,7 @@ float getMoveDistance(void);
 void setThreshold(void);
 char getCanGoForwards(void);
 int getBoundaryMaxVal(void);
+int getBoundaryMinVal(void);
 int getBoundaryMaxPosX(int);
 void createSmoothedBoundary(void);
 void moveWaypointForwardAngle(uint8_t, float, int);

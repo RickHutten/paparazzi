@@ -36,9 +36,9 @@ struct video_listener *listener = NULL;
 // Filter Settings
 uint8_t color_lum_min = 50;
 uint8_t color_lum_max = 170;
-uint8_t color_cb_min  = 30;
+uint8_t color_cb_min  = 0;
 uint8_t color_cb_max  = 110;
-uint8_t color_cr_min  = 80;
+uint8_t color_cr_min  = 0;
 uint8_t color_cr_max  = 170;
 
 // Result
@@ -136,7 +136,7 @@ uint16_t process_image(struct image_t *input, struct image_t *output) {
 	// Draw boundary onto image
 	for (uint16_t x = 0; x < image_width; x++) {
 		for (uint16_t y = 0; y < image_height; y += 2) {
-			// Show the boundary on the image
+//			// Show the boundary on the image
 //			if (y == boundary[x / box_width] || y+1 == boundary[x / box_width]) {
 //				dest[0] = 128;      // U
 //				dest[1] = 250;  	// Y
