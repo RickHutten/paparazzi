@@ -18,7 +18,7 @@
 
 #include "subsystems/datalink/datalink.h"
 #include "subsystems/electrical.h"
-#include "subsystems/radio_contrraol.h"
+#include "subsystems/radio_control.h"
 #include "subsystems/ahrs.h"
 
 
@@ -64,6 +64,8 @@ void orange_avoider_periodic() {
 	// Change the threshold depending on the pitch of the drone
 	setThreshold();
 
+	printf("T: %d ", threshold);
+
 	// Create moving average of the boundary[] array
 	createSmoothedBoundary();
 
@@ -101,7 +103,8 @@ void orange_avoider_periodic() {
 	} else {
 		if (prevCanGoForwards) {
 			// First time we can't go forwards, set the waypoint once
-			waypoint_set_here_2d(WP_GOAL);
+			//waypoint_set_here_2d(WP_GOAL);
+			moveWaypointForwardAngle(WP_GOAL, -0.2, 0);
 		}
 		// Turn to the right
 		printf("Move: stop  Avoidance: %f  ", incrementForAvoidance);
@@ -187,6 +190,9 @@ void setThreshold() {
 	struct FloatEulers* my_euler_angles = stateGetNedToBodyEulers_f();
 	float theta = my_euler_angles->theta;
 	threshold = 40 - theta * 300;
+	if (threshold < 1) {
+		threshold = 1;
+	}
 }
 
 /*
@@ -194,7 +200,7 @@ void setThreshold() {
  */
 char getCanGoForwards() {
     // Center boundary should all be higher than this
-	for (int i = 12; i < 37; i ++) {
+	for (int i = 16; i < 33; i ++) {
 		if (boundary_smoothed_2[i] <= threshold) {
 			printf("F: color  ");
 			// Set random turn direction (-10 or +10)
@@ -208,12 +214,12 @@ char getCanGoForwards() {
 
 	// Drone is below y = 10  (danger zone)
 	if (getPositionY() < 10 && heading > 0) {
-		printf("F: y 20   ");
+		printf("F: y 10   ");
 		// Choose best avoidance direction
 		if (heading < 0.79) {
-			incrementForAvoidance = -15;
+			incrementForAvoidance = -10;
 		} else if (heading > 2.36) {
-			incrementForAvoidance = 15;
+			incrementForAvoidance = 10;
 		} else {
 			chooseRandomIncrementAvoidance();
 		}
@@ -225,9 +231,9 @@ char getCanGoForwards() {
 		printf("F: y 90   ");
 		// Choose best avoidance direction
 		if (heading > -0.79) {
-			incrementForAvoidance = 15;
+			incrementForAvoidance = 10;
 		} else if (heading < -2.36) {
-			incrementForAvoidance = -15;
+			incrementForAvoidance = -10;
 		} else {
 			chooseRandomIncrementAvoidance();
 		}
@@ -239,9 +245,9 @@ char getCanGoForwards() {
 		printf("F: x 10   ");
 		// Choose best avoidance direction
 		if (heading < -2.36) {
-			incrementForAvoidance = 15;
+			incrementForAvoidance = 10;
 		} else if (heading > 2.36) {
-			incrementForAvoidance = -15;
+			incrementForAvoidance = -10;
 		} else {
 			chooseRandomIncrementAvoidance();
 		}
@@ -253,9 +259,9 @@ char getCanGoForwards() {
 		printf("F: x 90   ");
 		// Choose best avoidance direction
 		if (heading < -0.79) {
-			incrementForAvoidance = -15;
+			incrementForAvoidance = -10;
 		} else if (heading > 0.79) {
-			incrementForAvoidance = 15;
+			incrementForAvoidance = 10;
 		} else {
 			chooseRandomIncrementAvoidance();
 		}
