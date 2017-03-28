@@ -85,11 +85,11 @@ void orange_avoider_periodic() {
 
 		printf("Move: %f ", moveDistance);
 
-		if (pos_x < 20 && boundary_smoothed_2[24] < 230) {
+		if (pos_x < 20 && boundary_smoothed[24] < 230) {
 			// Highest boundary is slightly to the left, move forwards to the left
 			moveWaypointForwardAngle(WP_GOAL, moveDistance, -5);
 			printf("GoLeft      ");
-		} else if (pos_x > 29 && boundary_smoothed_2[24] < 230) {
+		} else if (pos_x > 29 && boundary_smoothed[24] < 230) {
 			// Highest boundary is slightly to the right, move forwards to the right
 			moveWaypointForwardAngle(WP_GOAL, moveDistance, 5);
 			printf("GoRight     ");
@@ -197,14 +197,15 @@ void setThreshold() {
 
 /*
  * Calculates whether there is something directly in front of the drone
+ * and sets the value for incrementForAvoidance
  */
 char getCanGoForwards() {
     // Center boundary should all be higher than this
 	for (int i = 16; i < 33; i ++) {
-		if (boundary_smoothed_2[i] <= threshold) {
+		if (boundary_smoothed[i] <= threshold) {
 			printf("F: color  ");
-			// Set random turn direction (-10 or +10)
-			chooseRandomIncrementAvoidance();
+			// Set turn direction based on boundary height (-10 or +10)
+			incrementForAvoidance = 10 * getColorAvoidanceDirection();
 			return 0;
 		}
 	}
@@ -274,13 +275,33 @@ char getCanGoForwards() {
 }
 
 /*
+ * Return whether the drone should avoid to the left (-1) or to the right (+1)
+ */
+int getColorAvoidanceDirection() {
+	int totalLeft = 0;
+	int totalRight = 0;
+	// Count total boundary height on the left
+	for (int i = 0; i < 25; i++) {
+		totalLeft += boundary_smoothed[i];
+	}
+	// Count total boundary height on the right
+	for (int i = 25; i < 50; i++ ) {
+		totalRight += boundary_smoothed[i];
+	}
+	if (totalLeft > totalRight) {
+		return -1;
+	}
+	return 1;
+}
+
+/*
  * Get the maximum value of the boundary
  */
 int getBoundaryMaxVal() {
 	int max = 0;
 	for (int i = 0; i < 48; i ++) {
-		if (boundary_smoothed_2[i] > max) {
-			max = boundary_smoothed_2[i];
+		if (boundary_smoothed[i] > max) {
+			max = boundary_smoothed[i];
 		}
 	}
 	return max;
@@ -292,8 +313,8 @@ int getBoundaryMaxVal() {
 int getBoundaryMinVal() {
 	int min = 240;
 	for (int i = 16; i < 33; i ++) {
-		if (boundary_smoothed_2[i] < min) {
-			min = boundary_smoothed_2[i];
+		if (boundary_smoothed[i] < min) {
+			min = boundary_smoothed[i];
 		}
 	}
 	return min;
@@ -304,7 +325,7 @@ int getBoundaryMinVal() {
  */
 int getBoundaryMaxPosX(int max) {
 	for (int i = 0; i < 48; i ++) {
-		if (boundary_smoothed_2[i] == max) {
+		if (boundary_smoothed[i] == max) {
 			return i;
 		}
 	}
@@ -316,8 +337,7 @@ int getBoundaryMaxPosX(int max) {
  */
 void createSmoothedBoundary() {
 	for (int i = 2; i < 50; i ++) {
-//		boundary_smoothed[i-2] = 0.2 * (boundary[i-2] + boundary[i-1] + boundary[i] + boundary[i+1] + boundary[i+2]);
-		boundary_smoothed_2[i-1] = (boundary[i-1] + boundary[i] + boundary[i+1]) / 3;
+		boundary_smoothed[i-1] = (boundary[i-1] + boundary[i] + boundary[i+1]) / 3;
 	}
 	return;
 }

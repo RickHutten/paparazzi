@@ -25,6 +25,7 @@ extern void orange_avoider_periodic(void);
 float getMoveDistance(void);
 void setThreshold(void);
 char getCanGoForwards(void);
+int getColorAvoidanceDirection(void);
 int getBoundaryMaxVal(void);
 int getBoundaryMinVal(void);
 int getBoundaryMaxPosX(int);

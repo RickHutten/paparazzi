@@ -46,8 +46,7 @@ int box_width = 10;
 int box_height = 12;
 int color_count = 0;
 int boundary[520 / 10];
-//int boundary_smoothed[(520 / 10) - 4];
-int boundary_smoothed_2[(520 / 10) - 2];
+int boundary_smoothed[(520 / 10) - 2];
 int threshold = 40;
 
 // Function
@@ -77,7 +76,7 @@ uint16_t process_image(struct image_t *input, struct image_t *output) {
 	int image_height = output->w;
 	int image_width = output->h;
 
-	// Area of
+	// Area of the individual boxes
 	int box_area = box_width * box_height / 2;
 
 	// Initialize boxes that count green pixels per section of the image
@@ -106,6 +105,22 @@ uint16_t process_image(struct image_t *input, struct image_t *output) {
 				boxes[(y / (box_height))][(x / (box_width))] += 1;
 			}
 
+			// Show the smoothed boundary on the image, the boundary
+			// is 1 frame behind but it's only for visual purposes
+			if (x > 2 * box_width && x < image_width - 2 * box_width &&
+					(y == boundary_smoothed[x / box_width - 1] || y+1 == boundary_smoothed[x / box_width - 1])) {
+				dest[0] = 128;      // U
+				dest[1] = 250;  	// Y
+				dest[2] = 20;		// V
+			}
+
+			// Draw the threshold on the image
+			if (y == threshold || y + 1 == threshold) {
+				dest[0] = 20;      // U
+				dest[1] = 250;  	// Y
+				dest[2] = 200;		// V
+			}
+
 			// Go to the next 2 pixels
 			cnt += 4;
 			dest += 4;
@@ -126,44 +141,6 @@ uint16_t process_image(struct image_t *input, struct image_t *output) {
 				// The column is green all the way up
 				boundary[j] = image_height;
 			}
-		}
-	}
-
-	// Set image pointers to beginning of the image for the second loop
-	dest -= cnt;
-	source -= cnt;
-
-	// Draw boundary onto image
-	for (uint16_t x = 0; x < image_width; x++) {
-		for (uint16_t y = 0; y < image_height; y += 2) {
-//			// Show the boundary on the image
-//			if (y == boundary[x / box_width] || y+1 == boundary[x / box_width]) {
-//				dest[0] = 128;      // U
-//				dest[1] = 250;  	// Y
-//				dest[2] = 20;		// V
-//			}
-
-			// Show the smoothed boundary on the image
-			if (x > 2 * box_width && x < image_width - 2 * box_width && y == boundary_smoothed_2[x / box_width - 1]) {
-				dest[0] = 128;      // U
-				dest[1] = 250;  	// Y
-				dest[2] = 20;		// V
-			} else if (x > 2 * box_width && x < image_width - 2 * box_width && y+1 == boundary_smoothed_2[x / box_width - 1]) {
-				dest[0] = 128;      // U
-				dest[1] = 250;  	// Y
-				dest[2] = 20;		// V
-			}
-
-			// Draw the threshold on the image
-			if (y == threshold || y + 1 == threshold) {
-				dest[0] = 20;      // U
-				dest[1] = 250;  	// Y
-				dest[2] = 200;		// V
-			}
-
-			// Go to the next 2 pixels
-			dest += 4;
-			source += 4;
 		}
 	}
 	return 0;
