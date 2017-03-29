@@ -34,6 +34,8 @@ void moveWaypointForwardAngle(uint8_t, float, int);
 float getHeading(void);
 float getPositionX(void);
 float getPositionY(void);
+int getPositionZ(void);
+void moveDroneUp(uint8_t);
 
 uint8_t calculateForwards(struct EnuCoor_i *, float, int);
 extern uint8_t moveWaypointForward(uint8_t, float);

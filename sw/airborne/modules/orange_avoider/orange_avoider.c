@@ -44,6 +44,7 @@ float incrementForAvoidance		= 10;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
 char prevCanGoForwards = 1;
+char droneIsLow = 0;
 
 /*
  * Initialization function, initialize camera object
@@ -78,6 +79,21 @@ void orange_avoider_periodic() {
 	// Get x position of the maximum value
 	int pos_x = getBoundaryMaxPosX(max);
 
+	// Check whether the position of the drone is very low
+	if (getPositionZ() < 150 || droneIsLow) {
+		droneIsLow = 1;
+
+		// Move waypoint up
+		moveDroneUp(WP_GOAL);
+
+		if (getPositionZ() < 250) {
+			// Don go any further in this function
+			printf("Pos: LOW (%f, %f, %d) Heading: %f\n", getPositionX(), getPositionY(), getPositionZ(), getHeading());
+			return;
+		}
+		droneIsLow = 0;
+	}
+
 	// If its safe to go forwards
 	if(canGoForwards){
 		// Get the move distance
@@ -85,15 +101,23 @@ void orange_avoider_periodic() {
 
 		printf("Move: %f ", moveDistance);
 
-		if (pos_x < 20 && boundary_smoothed[24] < 230) {
+		if (pos_x < 16 && boundary_smoothed[24] < 230) {
 			// Highest boundary is slightly to the left, move forwards to the left
 			moveWaypointForwardAngle(WP_GOAL, moveDistance, -5);
-			printf("GoLeft      ");
-		} else if (pos_x > 29 && boundary_smoothed[24] < 230) {
+			printf("GoLeft -5   ");
+		} else if (pos_x < 20 && boundary_smoothed[24] < 230) {
+			// Highest boundary is slightly to the left, move forwards to the left
+			moveWaypointForwardAngle(WP_GOAL, moveDistance, pos_x - 20);
+			printf("GoLeft %d   ", pos_x - 20);
+		} else if (pos_x > 33 && boundary_smoothed[24] < 230) {
 			// Highest boundary is slightly to the right, move forwards to the right
 			moveWaypointForwardAngle(WP_GOAL, moveDistance, 5);
-			printf("GoRight     ");
-		} else {
+			printf("GoRight +5  ");
+		} else if (pos_x > 29 && boundary_smoothed[24] < 230) {
+			// Highest boundary is slightly to the right, move forwards to the right
+			moveWaypointForwardAngle(WP_GOAL, moveDistance, pos_x - 29);
+			printf("GoRight +%d  ", pos_x - 29);
+		}  else {
 			// Highest boundary is straight ahead, go straight
 			moveWaypointForwardAngle(WP_GOAL, moveDistance, 0);
 			printf("GoStraight  ");
@@ -103,23 +127,22 @@ void orange_avoider_periodic() {
 	} else {
 		if (prevCanGoForwards) {
 			// First time we can't go forwards, set the waypoint once
-			//waypoint_set_here_2d(WP_GOAL);
-			moveWaypointForwardAngle(WP_GOAL, -0.2, 0);
+			moveWaypointForwardAngle(WP_GOAL, -0.5, 0);
 		}
 		// Turn to the right
-		printf("Move: stop  Avoidance: %f  ", incrementForAvoidance);
+		printf("Move: stop  A: %f  ", incrementForAvoidance);
 		increase_nav_heading(&nav_heading, incrementForAvoidance);
 	}
 	// Save the previous value of can go forwards
 	prevCanGoForwards = canGoForwards;
 
-	printf("Pos: (%f, %f) Heading: %f\n", getPositionX(), getPositionY(), getHeading());
+	printf("Pos: (%f, %f, %d) Heading: %f\n", getPositionX(), getPositionY(), getPositionZ(), getHeading());
 	return;
 }
 
 float getMoveDistance() {
 	// Get the moveDistance (speed) according to the camera
-	float moveDistance =  2.0 - 1.8 * (1.0 - getBoundaryMinVal()/240.);
+	float moveDistance =  2.25 - 2 * (1.0 - getBoundaryMinVal()/240.);
 
 	// Get the heading of the drone
 	float heading = getHeading();
@@ -182,6 +205,13 @@ float getPositionY() {
 }
 
 /*
+ * Get the z position
+ */
+int getPositionZ() {
+	return stateGetPositionEnu_i()->z;
+}
+
+/*
  * Sets the threshold depending on the theta angle of the drone,
  * so it is independent of the pitch
  */
@@ -205,24 +235,27 @@ char getCanGoForwards() {
 		if (boundary_smoothed[i] <= threshold) {
 			printf("F: color  ");
 			// Set turn direction based on boundary height (-10 or +10)
-			incrementForAvoidance = 10 * getColorAvoidanceDirection();
+			if (prevCanGoForwards) {
+				incrementForAvoidance = 10 * getColorAvoidanceDirection();
+			}
 			return 0;
 		}
 	}
-
 	// Check if were close to the optitrack boundary
 	float heading = getHeading();
 
 	// Drone is below y = 10  (danger zone)
 	if (getPositionY() < 10 && heading > 0) {
 		printf("F: y 10   ");
-		// Choose best avoidance direction
-		if (heading < 0.79) {
-			incrementForAvoidance = -10;
-		} else if (heading > 2.36) {
-			incrementForAvoidance = 10;
-		} else {
-			chooseRandomIncrementAvoidance();
+		if (prevCanGoForwards) {
+			// Choose best avoidance direction
+			if (heading < 0.79) {
+				incrementForAvoidance = -10;
+			} else if (heading > 2.36) {
+				incrementForAvoidance = 10;
+			} else {
+				chooseRandomIncrementAvoidance();
+			}
 		}
 		return 0;
 	}
@@ -230,13 +263,15 @@ char getCanGoForwards() {
 	// Drone is above y = 90  (danger zone)
 	if (getPositionY() > 90 && heading < 0){
 		printf("F: y 90   ");
-		// Choose best avoidance direction
-		if (heading > -0.79) {
-			incrementForAvoidance = 10;
-		} else if (heading < -2.36) {
-			incrementForAvoidance = -10;
-		} else {
-			chooseRandomIncrementAvoidance();
+		if (prevCanGoForwards) {
+			// Choose best avoidance direction
+			if (heading > -0.79) {
+				incrementForAvoidance = 10;
+			} else if (heading < -2.36) {
+				incrementForAvoidance = -10;
+			} else {
+				chooseRandomIncrementAvoidance();
+			}
 		}
 		return 0;
 	}
@@ -244,13 +279,15 @@ char getCanGoForwards() {
 	// Drone is below x = 10 (danger zone)
 	if (getPositionX() < 10 && (heading < - 1.57 || heading > 1.57)) {
 		printf("F: x 10   ");
-		// Choose best avoidance direction
-		if (heading < -2.36) {
-			incrementForAvoidance = 10;
-		} else if (heading > 2.36) {
-			incrementForAvoidance = -10;
-		} else {
-			chooseRandomIncrementAvoidance();
+		if (prevCanGoForwards) {
+			// Choose best avoidance direction
+			if (heading < -2.36) {
+				incrementForAvoidance = 10;
+			} else if (heading > 2.36) {
+				incrementForAvoidance = -10;
+			} else {
+				chooseRandomIncrementAvoidance();
+			}
 		}
 		return 0;
 	}
@@ -258,13 +295,15 @@ char getCanGoForwards() {
 	// Drone is above x = 90 (danger zone)
 	if (getPositionX() > 90 && (heading > - 1.57 && heading < 1.57)) {
 		printf("F: x 90   ");
-		// Choose best avoidance direction
-		if (heading < -0.79) {
-			incrementForAvoidance = -10;
-		} else if (heading > 0.79) {
-			incrementForAvoidance = 10;
-		} else {
-			chooseRandomIncrementAvoidance();
+		if (prevCanGoForwards) {
+			// Choose best avoidance direction
+			if (heading < -0.79) {
+				incrementForAvoidance = -10;
+			} else if (heading > 0.79) {
+				incrementForAvoidance = 10;
+			} else {
+				chooseRandomIncrementAvoidance();
+			}
 		}
 		return 0;
 	}
@@ -386,6 +425,24 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters) {
 	moveWaypoint(waypoint, &new_coor);
 	return false;
 }
+
+/*
+ * Move the waypoint to the current x & y positions but increase the z position
+ */
+void moveDroneUp(uint8_t waypoint) {
+	struct EnuCoor_i new_coor;
+
+	struct EnuCoor_i *pos = stateGetPositionEnu_i(); // Get your current position
+	// Now determine where to place the waypoint you want to go to
+	(&new_coor)->x = pos->x;
+	(&new_coor)->y = pos->y;
+	(&new_coor)->z = 300;
+
+	// Move waypoint to new coordinates
+	moveWaypoint(waypoint, &new_coor);
+	return;
+}
+
 
 /*
  * Moves waypoint at distanceMeters ahead of the drone with a specific angle
